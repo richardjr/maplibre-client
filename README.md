@@ -53,3 +53,35 @@ Add a GeoJSON object to the map.
 map.addGeojson({type: "FeatureCollection",features: [{type: "Feature", geometry: {type: "Point", coordinates: lonLat}}]},'data', false, {merge:true})
 ```
 
+### clearAllEvents
+
+Clear all events from the map.
+
+```javascript
+map.clearAllEvents();
+```
+
+## Examples
+
+### Drop an icon on the map
+
+```javascript
+
+// Event handler for dropping a marker on the map by clicking
+function dropMarker(lonLat: any[],event: Event) {
+	map.addGeojson({type: "FeatureCollection",features: [{type: "Feature", geometry: {type: "Point", coordinates: lonLat}}]},'data', false, {merge:true})
+	map.clearAllEvents();
+}
+
+// add a click event to the map
+map.clickEvent({'layer':'data', 'hook':dropMarker, 'clear':true});
+```
+
+### Draw a line on the map
+
+```javascript
+
+map.LineDrawMode('data', true);
+// Add this to a button to finish the drawing
+map.finaliseLineDraw('data',{colour: "green"});
+```

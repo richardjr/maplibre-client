@@ -92,6 +92,7 @@ export class MaplibreClient {
     draw_actual_points: any[] =[];
 
     moving_point: any=null;
+    drawProperties: any={};
 
 
     constructor(options: ClientOptions) {
@@ -165,7 +166,7 @@ export class MaplibreClient {
     }
 
     reload_data() {
-        if (this.options.json_url !== 'None') {
+        if (this.options.json_url !== undefined) {
             fetch(this.options.json_url)
                 .then(response => response.json())
                 .then(data => {
@@ -388,7 +389,7 @@ export class MaplibreClient {
 
         let self = this;
         this.moving_point=null;
-
+        this.drawProperties={};
         this.map.getSource("draw-end-points").setData({"type":"FeatureCollection","features":[]});
         this.geojson["draw-end-points"] = {"type":"FeatureCollection","features":[]};
 
@@ -449,6 +450,7 @@ export class MaplibreClient {
             // Draw the line on the map
             self.map.getSource("draw-vertex").setData(line);
             self._drawLine();
+            this.drawProperties= operation.data.features[0].properties;
         }
 
 
@@ -606,6 +608,8 @@ export class MaplibreClient {
      */
     finaliseLineDraw(layer: string = 'data', properties: {} = {},mode: string = 'save'): void {
         this.clearAllEvents();
+        // merge the saved properties with properties sent
+        properties = Object.assign(this.drawProperties, properties);
         if(mode==="save") {
             let geojson: GeoJSON = this.getDrawnLineString();
             geojson.features[0].properties = properties;
