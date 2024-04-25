@@ -68,20 +68,43 @@ map.clearAllEvents();
 ```javascript
 
 // Event handler for dropping a marker on the map by clicking
-function dropMarker(lonLat: any[],event: Event) {
-	map.addGeojson({type: "FeatureCollection",features: [{type: "Feature", geometry: {type: "Point", coordinates: lonLat}}]},'data', false, {merge:true})
+function dropMarker(point:[]) {
+	map.addGeojson({type: "FeatureCollection",features: [{type: "Feature", geometry: {type: "Point", coordinates: point}}]},'data', false, {merge:true})
 	map.clearAllEvents();
 }
 
 // add a click event to the map
-map.clickEvent({'layer':'data', 'hook':dropMarker, 'clear':true});
+map.clickEvent({ 'hook':dropMarker, 'clear':true});
 ```
 
 ### Draw a line on the map
 
-```javascript
+```typescript
 
 map.LineDrawMode('data', true);
 // Add this to a button to finish the drawing
-map.finaliseLineDraw('data',{colour: "green"});
+const finishDrawButton = document.querySelector('#fdraw') as HTMLButtonElement;
+finishDrawButton.addEventListener('click', () => {
+	map.finaliseLineDraw('data', {colour: "green"});
+});
+```
+
+### Edit things
+
+```typescript
+function editFeatures(point: [], event: Event, features: any[]) {
+    if (features.length > 0) {
+        const feature = features[0];
+        if (feature.geometry.type === 'Point') {
+            // Do something with the point
+        }
+        if (feature.geometry.type === 'LineString') {
+            // Replay the feature into line edit
+            map.LineDrawMode('data', true, {type: "FeatureCollection", features: [feature]});
+
+        }
+    }
+}
+
+map.clickEvent({layer_filter:['data','data-strings'], hook:editFeatures, clear:true});
 ```

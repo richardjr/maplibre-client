@@ -1,4 +1,4 @@
-import {Map, MapGeoJSONFeature, NavigationControl, Source} from 'maplibre-gl';
+import {Map, MapGeoJSONFeature, MapLibreEvent, MapMouseEvent, NavigationControl, Source} from 'maplibre-gl';
 // @ts-ignore
 import MapboxDraw from '@mapbox/mapbox-gl-draw';
 // @ts-ignore
@@ -47,6 +47,7 @@ interface QueueOperation {
     values?: any;
     hook?: Function;
     toggle?: boolean;
+    layer_filter?: string[];
 }
 
 // Client Options used to initialize the map
@@ -72,6 +73,7 @@ interface eventOptions {
     clear?: boolean;
     add_point?: boolean;
     hook_actual?: Function;
+    layer_filter?: string[];
 }
 
 const defaultLayers = ["data"];
@@ -192,7 +194,7 @@ export class MaplibreClient {
      */
     _addIdsToGeojson(data: GeoJSON) {
         for (let i in data.features) {
-            if (!data.features[i].properties.id) {
+            if (data.features[i].properties&&!data.features[i].properties.id) {
                 data.features[i].properties.id = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
             }
         }
@@ -206,9 +208,9 @@ export class MaplibreClient {
     processQueue(): void {
         let source: Source;
         let self=this;
-
         if (this.loaded === true && this.queue.length > 0) {
             let operation = this.queue.shift();
+            self._debugLog(`Processing Queue ${operation.type}`);
             switch (operation.type) {
                 case 'line_draw':
                     this._LineDrawMode(operation);
@@ -280,18 +282,17 @@ export class MaplibreClient {
                     this.map.clearLayer(operation.layer_name);
                     break;
                 case 'add_event':
-                    const callback = (event: Event) => {
+                    const callback = (event: MapMouseEvent) => {
                         // See if there is a feature(s) here:
                         let features: MapGeoJSONFeature[] = [];
                         let actual_features=[];
 
-                        if (operation.layer_name) {
+                        if (operation.layer_filter) {
                             // Filters do not seem to work correctly for line strings because reasons
-                            let layers=operation.layer_name.split(',');
-                            features = self.map.queryRenderedFeatures(event.point, {layers: layers});
+                            features = self.map.queryRenderedFeatures(event.point, {layers: operation.layer_filter});
                             // we need to get the actual feature from the geojson not these ones as they are in a crazy state
                             for(let i in features) {
-                                let feature = self.getFeature(layers[0],features[i].properties.id);
+                                let feature = self.getFeature(operation.layer_filter[0],features[i].properties.id);
                                 if(feature) {
                                     actual_features.push(feature);
                                 }
@@ -306,7 +307,7 @@ export class MaplibreClient {
                     }
 
                     // Make an event object
-                    let event: eventOptions = {hook: operation.hook, layer_name: operation.layer_name, clear: operation.toggle, event_type: operation.event_type};
+                    let event: eventOptions = {hook: operation.hook, layer_name: operation.layer_name, clear: operation.toggle, event_type: operation.event_type, layer_filter: operation.layer_filter};
                     event.hook_actual = callback;
                     if(event.layer_name) {
                         this.map.on(event.event_type, event.layer_name, callback);
@@ -382,6 +383,12 @@ export class MaplibreClient {
 
     }
 
+    _debugLog(message: string) {
+        if(this.options.debug===true) {
+            console.log(message);
+        }
+    }
+
     _LineDrawMode(operation?: QueueOperation) {
 
 
@@ -393,14 +400,14 @@ export class MaplibreClient {
 
         this.clearAllEvents();
 
-        function onMove(point: [], e: Event) {
+        function onMove(point: [], e: MapMouseEvent) {
             const coords = e.lngLat;
             self.draw_actual_points[self.moving_point]=[coords.lng, coords.lat];
             self._drawLine();
             self.canvas.style.cursor = 'grabbing';
         }
 
-        function onUp(e: Event) {
+        function onUp(e: MapMouseEvent) {
             self.canvas.style.cursor = '';
             self.clearEventType('mousemove');
             self.clearEventType('mouseup');
@@ -678,7 +685,8 @@ export class MaplibreClient {
             event_type: 'click',
             layer_name: eventOption.layer_name,
             hook: eventOption.hook,
-            toggle: eventOption.clear
+            toggle: eventOption.clear,
+            layer_filter: eventOption.layer_filter
         });
     }
 
@@ -692,7 +700,8 @@ export class MaplibreClient {
             event_type: eventOption.event_type,
             layer_name: eventOption.layer_name,
             hook: eventOption.hook,
-            toggle: eventOption.clear
+            toggle: eventOption.clear,
+            layer_filter: eventOption.layer_filter
         });
     }
 

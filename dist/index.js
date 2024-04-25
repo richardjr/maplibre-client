@@ -107,7 +107,7 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
      * We need unique ids for each feature
      * @param data
      */ _addIdsToGeojson(data) {
-        for(let i in data.features)if (!data.features[i].properties.id) data.features[i].properties.id = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+        for(let i in data.features)if (data.features[i].properties && !data.features[i].properties.id) data.features[i].properties.id = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
         return data;
     }
     /**
@@ -118,6 +118,7 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
         let self = this;
         if (this.loaded === true && this.queue.length > 0) {
             let operation = this.queue.shift();
+            self._debugLog(`Processing Queue ${operation.type}`);
             switch(operation.type){
                 case "line_draw":
                     this._LineDrawMode(operation);
@@ -190,15 +191,14 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
                         // See if there is a feature(s) here:
                         let features = [];
                         let actual_features = [];
-                        if (operation.layer_name) {
+                        if (operation.layer_filter) {
                             // Filters do not seem to work correctly for line strings because reasons
-                            let layers = operation.layer_name.split(",");
                             features = self.map.queryRenderedFeatures(event.point, {
-                                layers: layers
+                                layers: operation.layer_filter
                             });
                             // we need to get the actual feature from the geojson not these ones as they are in a crazy state
                             for(let i in features){
-                                let feature = self.getFeature(layers[0], features[i].properties.id);
+                                let feature = self.getFeature(operation.layer_filter[0], features[i].properties.id);
                                 if (feature) actual_features.push(feature);
                             }
                         }
@@ -214,7 +214,8 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
                         hook: operation.hook,
                         layer_name: operation.layer_name,
                         clear: operation.toggle,
-                        event_type: operation.event_type
+                        event_type: operation.event_type,
+                        layer_filter: operation.layer_filter
                     };
                     event.hook_actual = callback;
                     if (event.layer_name) this.map.on(event.event_type, event.layer_name, callback);
@@ -296,6 +297,9 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
         this.map.getSource("draw-end-points").setData(this.geojson["draw-end-points"]);
         //@ts-ignore
         this.map.getSource("draw-vertex").setData(line);
+    }
+    _debugLog(message) {
+        if (this.options.debug === true) console.log(message);
     }
     _LineDrawMode(operation) {
         let self = this;
@@ -626,7 +630,8 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
             event_type: "click",
             layer_name: eventOption.layer_name,
             hook: eventOption.hook,
-            toggle: eventOption.clear
+            toggle: eventOption.clear,
+            layer_filter: eventOption.layer_filter
         });
     }
     /**
@@ -638,7 +643,8 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
             event_type: eventOption.event_type,
             layer_name: eventOption.layer_name,
             hook: eventOption.hook,
-            toggle: eventOption.clear
+            toggle: eventOption.clear,
+            layer_filter: eventOption.layer_filter
         });
     }
     /**
