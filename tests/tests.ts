@@ -11,7 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 'url': "icons/start.png",
             }
         ],
-        debug: true
+        debug: false
     });
 
     const drawButton = document.querySelector('#draw') as HTMLButtonElement;
@@ -35,22 +35,21 @@ document.addEventListener('DOMContentLoaded', () => {
         map.clickEvent({ hook:dropMarker});
     });
 
-    function editFeatures(point: [], event: Event, features: any[]) {
-        console.log(features);
-        if (features.length > 0) {
-            const feature = features[0];
-            if (feature.geometry.type === 'Point') {
-                //map.clickEvent({'layer': 'data', 'hook': moveFeaturePoint, 'clear': true});
-            }
-            if (feature.geometry.type === 'LineString') {
-                map.LineDrawMode('data', true, {type: "FeatureCollection", features: [feature]});
+    function editPoint(point: [], event: Event, features: any[]) {
+        event.preventDefault();
+        map.dragFeature('data', features[0].properties.id);
 
-            }
-        }
+    }
+
+    function editLineString(point: [], event: Event, features: any[]) {
+        if(features.length>0)
+            map.LineDrawMode('data', true, {type: "FeatureCollection", features: [features[0]]});
     }
 
     const editButton = document.querySelector('#edit') as HTMLButtonElement;
     editButton.addEventListener('click', () => {
-        map.clickEvent({layer_filter:['data','data-strings'], hook:editFeatures, clear:true});
+        map.clearAllEvents();
+        map.addEvent({event_type: 'mousedown', hook:editPoint, clear:true, layer_name: 'data', layer_filter:['data']});
+        map.addEvent({event_type: 'click', layer_filter:['data-strings'], hook:editLineString, clear:false});
     });
 });

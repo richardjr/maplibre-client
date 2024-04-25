@@ -291,15 +291,15 @@ export class MaplibreClient {
                             // Filters do not seem to work correctly for line strings because reasons
                             features = self.map.queryRenderedFeatures(event.point, {layers: operation.layer_filter});
                             // we need to get the actual feature from the geojson not these ones as they are in a crazy state
-                            for(let i in features) {
-                                let feature = self.getFeature(operation.layer_filter[0],features[i].properties.id);
+                            /*for(let i in features) {
+                                let feature = self.getFeature(operation.layer_name,features[i].properties.id);
                                 if(feature) {
                                     actual_features.push(feature);
                                 }
-                            }
+                            }*/
                         }
                         // @ts-ignore
-                        operation.hook([event.lngLat.lng, event.lngLat.lat], event, actual_features);
+                        operation.hook([event.lngLat.lng, event.lngLat.lat], event, features);
                     }
 
                     if (operation.toggle === true) {
@@ -688,6 +688,23 @@ export class MaplibreClient {
             toggle: eventOption.clear,
             layer_filter: eventOption.layer_filter
         });
+    }
+
+    dragFeature(layer_name: string = 'data', feature_id: string) {
+        let self = this;
+        self.clearAllEvents();
+        function onDragMove(point: [], e: MapMouseEvent) {
+            const coords = e.lngLat;
+            self.moveFeaturePoint(layer_name, feature_id, [coords.lng, coords.lat]);
+        }
+
+        function onDragEnd(e: MapMouseEvent) {
+            self.clearEventType('mousemove');
+            self.clearEventType('mouseup');
+        }
+
+        this.addEvent({event_type: 'mousemove', hook: onDragMove, clear: false});
+        this.addEvent({event_type: 'mouseup', hook: onDragEnd, clear: false});
     }
 
     /**
