@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "parcel build"
+    "build": "parcel build --no-cache"
   },
   "repository": {
     "type": "git",
@@ -27,5 +27,15 @@
     "@mapbox/mapbox-gl-draw": "latest",
     "@turf/turf": "latest",
     "maplibre-gl": "latest"
+  },
+  "targets": {
+    "main": {
+      "source": "src/index.ts",
+      "distDir": "dist"
+    },
+    "test": {
+      "source": "tests/tests.ts",
+      "distDir": "dist"
+    }
   }
 }

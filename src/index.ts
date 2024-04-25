@@ -40,6 +40,7 @@ interface Icon {
 // Queue Operation
 interface QueueOperation {
     type: "add_layer" | "remove_layer" | "add_geojson" | "clear_layer" | "set_visibility" | "add_event" | "resize" | "line_draw" | "set_center" | "delete_feature" | "move_feature";
+    event_type?: string;
     layer_name?: string; // This makes layer_name optional
     data?: GeoJSON;
     url?: string;
@@ -50,23 +51,24 @@ interface QueueOperation {
 
 // Client Options used to initialize the map
 interface ClientOptions {
-    minZoom: number;
-    maxZoom: number;
-    zoom: number;
-    padding: number;
-    center: [number, number];
-    style: string;
-    controls: boolean;
-    debug: boolean;
-    icons: Icon[];
-    json_url: string;
-    fit: boolean;
+    minZoom?: number;
+    maxZoom?: number;
+    zoom?: number;
+    padding?: number;
+    center?: [number, number];
+    style?: string;
+    controls?: boolean;
+    debug?: boolean;
+    icons?: Icon[];
+    json_url?: string;
+    fit?: boolean;
 }
 
 // Event Options used to add events to the map
 interface eventOptions {
     hook?: Function;
-    layer?: string;
+    event_type?: string;
+    layer_name?: string;
     clear?: boolean;
     add_point?: boolean;
     hook_actual?: Function;
@@ -132,7 +134,6 @@ export class MaplibreClient {
         let self = this;
 
         this.map.on('load', function () {
-            console.log('Map Loaded');
             self.loaded = true;
             self.loadIcons(self.options.icons);
             self.enableLocation();
@@ -152,9 +153,7 @@ export class MaplibreClient {
         icons.forEach((icon) => {
             // Make a random uuid to use as the image name
             const uuid = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
-            console.log('Loading Icon:', icon);
             self.map.loadImage(icon.url+"?cacheblock="+uuid).then(response => {
-                console.log(response);
 
                 // Add the image to the map
                 self.map.addImage(icon.name, response.data);
@@ -210,10 +209,6 @@ export class MaplibreClient {
 
         if (this.loaded === true && this.queue.length > 0) {
             let operation = this.queue.shift();
-            console.log(`Processing Queue ${operation.type}`);
-            if(operation.data)
-                console.log(operation.data);
-
             switch (operation.type) {
                 case 'line_draw':
                     this._LineDrawMode(operation);
@@ -279,7 +274,6 @@ export class MaplibreClient {
                             this.map.fitBounds(bbox, {padding: this.options.padding, maxZoom: this.options.maxZoom});
                         }
                     }
-                    console.log(this.geojson[operation.layer_name])
                     break;
                 case 'clear_layer':
                     //@ts-ignore
@@ -312,9 +306,13 @@ export class MaplibreClient {
                     }
 
                     // Make an event object
-                    let event: eventOptions = {hook: operation.hook, layer: operation.layer_name, clear: operation.toggle};
+                    let event: eventOptions = {hook: operation.hook, layer_name: operation.layer_name, clear: operation.toggle, event_type: operation.event_type};
                     event.hook_actual = callback;
-                    this.map.on('click', callback);
+                    if(event.layer_name) {
+                        this.map.on(event.event_type, event.layer_name, callback);
+                    } else {
+                        this.map.on(event.event_type, callback);
+                    }
                     this.events.push(event);
                     break;
                 case 'resize':
@@ -393,7 +391,9 @@ export class MaplibreClient {
         this.map.getSource("draw-end-points").setData({"type":"FeatureCollection","features":[]});
         this.geojson["draw-end-points"] = {"type":"FeatureCollection","features":[]};
 
-        function onMove(e: Event) {
+        this.clearAllEvents();
+
+        function onMove(point: [], e: Event) {
             const coords = e.lngLat;
             self.draw_actual_points[self.moving_point]=[coords.lng, coords.lat];
             self._drawLine();
@@ -402,42 +402,50 @@ export class MaplibreClient {
 
         function onUp(e: Event) {
             self.canvas.style.cursor = '';
-            self.map.off('mousemove', onMove);
-            self.map.off('touchmove', onMove);
+            self.clearEventType('mousemove');
+            self.clearEventType('mouseup');
+            //self.map.off('mousemove', onMove);
+            //self.map.off('touchmove', onMove);
         }
 
-        this.map.on('mousedown', 'draw-end-points', (e) => {
-            e.preventDefault();
-            if(e.originalEvent.which===1) {
-                // left click
-                self.moving_point = e.features[0].properties.actual_index;
-                self.canvas.style.cursor = 'grab';
-                self.map.on('mousemove', onMove);
-                self.map.once('mouseup', onUp);
-            }
-            if(e.originalEvent.which===3) {
-                // right click
-                self.draw_actual_points.splice(e.features[0].properties.actual_index,1);
-                self._drawLine();
-            }
-        });
+        this.addEvent({event_type: 'mousedown', layer_name: 'draw-end-points', hook: (point: [],e: any)=> {
+                e.preventDefault();
+                if(e.originalEvent.which===1) {
+                    // left click
+                    self.moving_point = e.features[0].properties.actual_index;
+                    self.canvas.style.cursor = 'grab';
+                    self.addEvent({event_type: 'mousemove', hook: onMove, clear: false});
+                    self.addEvent({event_type: 'mouseup', hook: onUp, clear: false});
+                    //self.map.on('mousemove', onMove);
+                    //self.map.once('mouseup', onUp);
+                }
+                if(e.originalEvent.which===3) {
+                    // right click
+                    self.draw_actual_points.splice(e.features[0].properties.actual_index,1);
+                    self._drawLine();
+                }
+            }, clear: false})
 
-        this.map.on('mousedown', 'draw-mid-points', (e) => {
-            e.preventDefault();
-            if(e.originalEvent.which===1) {
-                // add a new point at the midpoint in the array
-                self.draw_actual_points.splice(e.features[0].properties.actual_index + 1, 0, [e.lngLat.lng, e.lngLat.lat]);
-                self._drawLine();
-                self.moving_point = e.features[0].properties.actual_index + 1;
-                self.canvas.style.cursor = 'grab';
-                self.map.on('mousemove', onMove);
-                self.map.once('mouseup', onUp);
-            }
-        });
+
+        this.addEvent({event_type: 'mousedown', layer_name: 'draw-mid-points', hook: (point: [],e: any)=>{
+                e.preventDefault();
+                if(e.originalEvent.which===1) {
+                    // add a new point at the midpoint in the array
+                    self.draw_actual_points.splice(e.features[0].properties.actual_index + 1, 0, [e.lngLat.lng, e.lngLat.lat]);
+                    self._drawLine();
+                    self.moving_point = e.features[0].properties.actual_index + 1;
+                    self.canvas.style.cursor = 'grab';
+                    //self.map.on('mousemove', onMove);
+                    self.addEvent({event_type: 'mousemove', hook: onMove, clear: false});
+                    self.addEvent({event_type: 'mouseup', hook: onUp, clear: false});
+
+                    //self.map.once('mouseup', onUp);
+                }
+            }, clear: false});
+
 
         // json contains a line string we need to convert to points in draw_actual_points
         if(operation.data&&operation.data.features&&operation.data.features.length>0&&operation.data.features[0].geometry&&operation.data.features[0].geometry.coordinates&&operation.data.features[0].geometry.coordinates.length>0) {
-            console.log(operation.data)
             this.draw_actual_points=operation.data.features[0].geometry.coordinates;
             // Create a line between all the points
             let line = {
@@ -484,7 +492,7 @@ export class MaplibreClient {
             }
         }
 
-        self.clickEvent({"hook":addPoint,"clear":true});
+        self.clickEvent({hook:addPoint,clear:false});
     }
 
     // Public Methods
@@ -552,7 +560,6 @@ export class MaplibreClient {
 
     getFeature(layer_name: string, feature_id: string) {
         let features = this.geojson[layer_name].features;
-        console.log(features);
         for (let i in features) {
             if (features[i].properties && features[i].properties.id && features[i].properties.id === feature_id) {
                 return features[i];
@@ -636,9 +643,29 @@ export class MaplibreClient {
     clearAllEvents(): void {
         for (let i in this.events) {
             // @ts-ignore IS this working???
-            this.map.off('click', this.events[i].hook_actual);
+            if(this.events[i].layer_name)
+                this.map.off(this.events[i].event_type, this.events[i].layer_name, this.events[i].hook_actual);
+            else
+                this.map.off(this.events[i].event_type, this.events[i].hook_actual);
         }
         this.events = [];
+    }
+
+    /**
+     * Clear all events of a certain type
+     * @param eventType
+     */
+    clearEventType(eventType: string) {
+
+        for (let i in this.events) {
+            if (this.events[i].event_type === eventType) {
+                if(this.events[i].layer_name)
+                    this.map.off(eventType, this.events[i].layer_name, this.events[i].hook_actual);
+                else
+                    this.map.off(eventType, this.events[i].hook_actual);
+                this.events.splice(Number(i), 1);
+            }
+        }
     }
 
     /**
@@ -648,7 +675,22 @@ export class MaplibreClient {
     clickEvent(eventOption: eventOptions): void {
         this.addQueueOperation({
             type: 'add_event',
-            layer_name: eventOption.layer,
+            event_type: 'click',
+            layer_name: eventOption.layer_name,
+            hook: eventOption.hook,
+            toggle: eventOption.clear
+        });
+    }
+
+    /**
+     * Add all other events to the map
+     * @param eventOption
+     */
+    addEvent(eventOption: eventOptions): void {
+        this.addQueueOperation({
+            type: 'add_event',
+            event_type: eventOption.event_type,
+            layer_name: eventOption.layer_name,
             hook: eventOption.hook,
             toggle: eventOption.clear
         });
