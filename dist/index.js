@@ -30,6 +30,7 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
         this.draw_actual_points = [];
         this.moving_point = null;
         this.drawProperties = {};
+        this.history = [];
         this.options = options;
         this.map = new (0, $8zHUo$maplibregl.Map)({
             container: "map",
@@ -156,6 +157,7 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
                     source = this.map.getSource(operation.layer_name);
                     // Add ids to the geojson
                     operation.data = this._addIdsToGeojson(operation.data);
+                    this._addHistory(operation.layer_name);
                     if (operation.values && operation.values["merge"] === true && this.geojson[operation.layer_name]) {
                         // Merge the data
                         let new_data = operation.data;
@@ -232,6 +234,15 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
         if (point1 === point2 && point1 === point2) return true;
         if (point1 - precision <= point2 && point1 + precision >= point2 && point1 - precision <= point2 && point1 + precision >= point2) return true;
         return false;
+    }
+    _addHistory(layer_name) {
+        // Add *copy* of the geojson to the history
+        this.history.push({
+            type: "geojson_full",
+            layer_name: layer_name,
+            data: JSON.parse(JSON.stringify(this.geojson[layer_name]))
+        });
+        console.log(this.history);
     }
     _findMidpoint(pointA, pointB) {
         return [
@@ -431,6 +442,16 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
         });
     }
     // Public Methods
+    historyUndo() {
+        if (this.history.length > 0) {
+            let operation = this.history.pop();
+            if (operation.type === "geojson_full") {
+                let source = this.map.getSource(operation.layer_name);
+                source.setData(operation.data);
+                this.geojson[operation.layer_name] = operation.data;
+            }
+        }
+    }
     /**
      * Undo the last point drawn
      * @constructor

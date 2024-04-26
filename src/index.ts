@@ -76,6 +76,12 @@ interface eventOptions {
     layer_filter?: string[];
 }
 
+interface historyElement {
+    type: "geojson_full" | "delete_feature" | "move_feature" | "add_feature";
+    layer_name: string;
+    data: GeoJSON;
+}
+
 const defaultLayers = ["data"];
 
 // Maplibre Client
@@ -97,6 +103,7 @@ export class MaplibreClient {
 
     moving_point: any=null;
     drawProperties: any={};
+    history: historyElement[] = [];
 
 
     constructor(options: ClientOptions) {
@@ -252,6 +259,7 @@ export class MaplibreClient {
                     source=this.map.getSource(operation.layer_name);
                     // Add ids to the geojson
                     operation.data = this._addIdsToGeojson(operation.data);
+                    this._addHistory(operation.layer_name);
                     if(operation.values&&operation.values['merge']===true&&this.geojson[operation.layer_name]) {
                         // Merge the data
                         let new_data = operation.data;
@@ -337,6 +345,11 @@ export class MaplibreClient {
         if(point1-precision<=point2&&point1+precision>=point2&&point1-precision<=point2&&point1+precision>=point2)
             return true;
         return false;
+    }
+
+    _addHistory(layer_name: string) {
+        // Add *copy* of the geojson to the history
+        this.history.push({type: "geojson_full", layer_name: layer_name, data: JSON.parse(JSON.stringify(this.geojson[layer_name]))});
     }
 
 
@@ -503,6 +516,17 @@ export class MaplibreClient {
     }
 
     // Public Methods
+
+    historyUndo() {
+        if(this.history.length>0) {
+            let operation = this.history.pop();
+            if(operation.type==="geojson_full") {
+                let source=this.map.getSource(operation.layer_name);
+                source.setData(operation.data);
+                this.geojson[operation.layer_name] = operation.data;
+            }
+        }
+    }
 
 
     /**

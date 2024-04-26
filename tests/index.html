@@ -3,12 +3,41 @@
     <title>Directions 2 Me</title>
     <link rel="stylesheet" href="css/maplibre-gl.css">
     <script src="/dist/tests/tests.js"></script>
+    <style>
+        .control {
+            margin: 10px;
+            padding: 10px;
+            display: inline-block;
+        }
+        .disabled {
+            opacity: 0.5;
+            pointer-events: none;
+            background: repeating-linear-gradient(
+                    45deg,
+                    #606dbc,
+                    #606dbc 10px,
+                    #465298 10px,
+                    #465298 20px
+            );
+        }
+
+    </style>
 </head>
 <body>
-    <button id="draw">Test draw</button>
-    <button id="fdraw">Finish draw</button>
-    <button id="drop">Test drop</button>
-    <button id="edit">Edit</button>
+    <div class="control drawing">
+        <button id="draw">Test draw</button>
+        <button id="fdraw" disabled="true">Finish draw</button>
+    </div>
+    <div class="control dropping">
+        <button id="drop">Test drop</button>
+    </div>
+    <div class="control editing">
+        <button id="edit">Edit</button>
+        <button id="cancel-edit" disabled="true">Cancel</button>
+    </div>
+    <div class="control history">
+        <button id="undo">Undo</button>
+    </div>
     <div id="map" style="width:100%;height: 80vh;"></div>
 </body>
 </html>
