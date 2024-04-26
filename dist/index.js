@@ -28,6 +28,7 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
         // Draw line mode
         this.draw_point_mode = "add";
         this.draw_actual_points = [];
+        this.draw_history = [];
         this.moving_point = null;
         this.drawProperties = {};
         this.history = [];
@@ -242,7 +243,6 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
             layer_name: layer_name,
             data: JSON.parse(JSON.stringify(this.geojson[layer_name]))
         });
-        console.log(this.history);
     }
     _findMidpoint(pointA, pointB) {
         return [
@@ -317,6 +317,7 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
             "type": "FeatureCollection",
             "features": []
         };
+        this.draw_history = [];
         this.clearAllEvents();
         function onMove(point, e) {
             const coords = e.lngLat;
@@ -331,8 +332,6 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
             self.canvas.style.cursor = "";
             self.clearEventType("mousemove");
             self.clearEventType("mouseup");
-        //self.map.off('mousemove', onMove);
-        //self.map.off('touchmove', onMove);
         }
         this.addEvent({
             event_type: "mousedown",
@@ -341,6 +340,7 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
                 e.preventDefault();
                 if (e.originalEvent.which === 1) {
                     // left click
+                    self.draw_history.push(JSON.parse(JSON.stringify(self.draw_actual_points)));
                     self.moving_point = e.features[0].properties.actual_index;
                     self.canvas.style.cursor = "grab";
                     self.addEvent({
@@ -358,6 +358,7 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
                 }
                 if (e.originalEvent.which === 3) {
                     // right click
+                    self.draw_history.push(JSON.parse(JSON.stringify(self.draw_actual_points)));
                     self.draw_actual_points.splice(e.features[0].properties.actual_index, 1);
                     self._drawLine();
                 }
@@ -371,6 +372,7 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
                 e.preventDefault();
                 if (e.originalEvent.which === 1) {
                     // add a new point at the midpoint in the array
+                    self.draw_history.push(JSON.parse(JSON.stringify(self.draw_actual_points)));
                     self.draw_actual_points.splice(e.features[0].properties.actual_index + 1, 0, [
                         e.lngLat.lng,
                         e.lngLat.lat
@@ -419,6 +421,7 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
             if (self.draw_point_mode === "add") {
                 if (features.length > 0) ;
                 else {
+                    self.draw_history.push(JSON.parse(JSON.stringify(self.draw_actual_points)));
                     self.draw_actual_points.push(point);
                     // Create a line between all the points
                     self._drawLine();
@@ -430,6 +433,7 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
                 // find the point in draw_actual_points using the coordinates
                 for(let i in self.draw_actual_points)// fuzzy match of coordinates by 0.0001
                 if (self._fuzzyMatch(self.draw_actual_points[i][0], features[0].geometry.coordinates[0]) && self._fuzzyMatch(self.draw_actual_points[i][1], features[0].geometry.coordinates[1])) {
+                    self.draw_history.push(JSON.parse(JSON.stringify(self.draw_actual_points)));
                     self.draw_actual_points.splice(i, 1);
                     break;
                 }
@@ -456,8 +460,11 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
      * Undo the last point drawn
      * @constructor
      */ LineDrawUndo() {
-        if (this.draw_actual_points.length > 0) this.draw_actual_points.pop();
-        this._drawLine();
+        console.log(this.draw_history);
+        if (this.draw_history.length > 0) {
+            this.draw_actual_points = this.draw_history.pop();
+            this._drawLine();
+        }
     }
     /**
      * Line Draw Mode enable
@@ -650,7 +657,7 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
     }
     dragFeature(layer_name = "data", feature_id) {
         let self = this;
-        self.clearAllEvents();
+        //self.clearAllEvents();
         function onDragMove(point, e) {
             const coords = e.lngLat;
             self.moveFeaturePoint(layer_name, feature_id, [

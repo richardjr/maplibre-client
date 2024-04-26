@@ -100,6 +100,7 @@ export class MaplibreClient {
     // Draw line mode
     draw_point_mode= "add";
     draw_actual_points: any[] =[];
+    draw_history: any[][] = [];
 
     moving_point: any=null;
     drawProperties: any={};
@@ -410,6 +411,7 @@ export class MaplibreClient {
         this.drawProperties={};
         this.map.getSource("draw-end-points").setData({"type":"FeatureCollection","features":[]});
         this.geojson["draw-end-points"] = {"type":"FeatureCollection","features":[]};
+        this.draw_history=[];
 
         this.clearAllEvents();
 
@@ -424,14 +426,15 @@ export class MaplibreClient {
             self.canvas.style.cursor = '';
             self.clearEventType('mousemove');
             self.clearEventType('mouseup');
-            //self.map.off('mousemove', onMove);
-            //self.map.off('touchmove', onMove);
+
         }
 
         this.addEvent({event_type: 'mousedown', layer_name: 'draw-end-points', hook: (point: [],e: any)=> {
                 e.preventDefault();
                 if(e.originalEvent.which===1) {
                     // left click
+                    self.draw_history.push(JSON.parse(JSON.stringify(self.draw_actual_points)));
+
                     self.moving_point = e.features[0].properties.actual_index;
                     self.canvas.style.cursor = 'grab';
                     self.addEvent({event_type: 'mousemove', hook: onMove, clear: false});
@@ -441,6 +444,7 @@ export class MaplibreClient {
                 }
                 if(e.originalEvent.which===3) {
                     // right click
+                    self.draw_history.push(JSON.parse(JSON.stringify(self.draw_actual_points)));
                     self.draw_actual_points.splice(e.features[0].properties.actual_index,1);
                     self._drawLine();
                 }
@@ -451,6 +455,7 @@ export class MaplibreClient {
                 e.preventDefault();
                 if(e.originalEvent.which===1) {
                     // add a new point at the midpoint in the array
+                    self.draw_history.push(JSON.parse(JSON.stringify(self.draw_actual_points)));
                     self.draw_actual_points.splice(e.features[0].properties.actual_index + 1, 0, [e.lngLat.lng, e.lngLat.lat]);
                     self._drawLine();
                     self.moving_point = e.features[0].properties.actual_index + 1;
@@ -489,6 +494,7 @@ export class MaplibreClient {
                 if (features.length > 0) {
                     // This is a move then handled else where
                 } else {
+                    self.draw_history.push(JSON.parse(JSON.stringify(self.draw_actual_points)));
                     self.draw_actual_points.push(point);
                     // Create a line between all the points
                     self._drawLine();
@@ -503,6 +509,7 @@ export class MaplibreClient {
                         // fuzzy match of coordinates by 0.0001
 
                         if(self._fuzzyMatch(self.draw_actual_points[i][0],features[0].geometry.coordinates[0])&&self._fuzzyMatch(self.draw_actual_points[i][1],features[0].geometry.coordinates[1])) {
+                            self.draw_history.push(JSON.parse(JSON.stringify(self.draw_actual_points)));
                             self.draw_actual_points.splice(i,1);
                             break;
                         }
@@ -534,9 +541,11 @@ export class MaplibreClient {
      * @constructor
      */
     LineDrawUndo() {
-        if(this.draw_actual_points.length>0)
-            this.draw_actual_points.pop();
-        this._drawLine();
+        console.log(this.draw_history);
+        if(this.draw_history.length>0) {
+            this.draw_actual_points = this.draw_history.pop();
+            this._drawLine();
+        }
     }
 
 
@@ -716,7 +725,7 @@ export class MaplibreClient {
 
     dragFeature(layer_name: string = 'data', feature_id: string) {
         let self = this;
-        self.clearAllEvents();
+        //self.clearAllEvents();
         function onDragMove(point: [], e: MapMouseEvent) {
             const coords = e.lngLat;
             self.moveFeaturePoint(layer_name, feature_id, [coords.lng, coords.lat]);
