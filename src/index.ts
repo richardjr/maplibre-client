@@ -308,7 +308,7 @@ export class MaplibreClient {
                             }*/
                         }
                         // @ts-ignore
-                        operation.hook([event.lngLat.lng, event.lngLat.lat], event, features);
+                        operation.hook([event.lngLat.lng, event.lngLat.lat], event, JSON.parse(JSON.stringify(features)));
                     }
 
                     if (operation.toggle === true) {

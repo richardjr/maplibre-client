@@ -202,7 +202,7 @@ class $882b6d93070905b3$export$70b4e56e45006596 {
                         operation.hook([
                             event.lngLat.lng,
                             event.lngLat.lat
-                        ], event, features);
+                        ], event, JSON.parse(JSON.stringify(features)));
                     };
                     if (operation.toggle === true) self.clearAllEvents();
                     // Make an event object

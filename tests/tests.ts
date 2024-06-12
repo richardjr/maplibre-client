@@ -18,6 +18,8 @@ document.addEventListener('DOMContentLoaded', () => {
         debug: false
     });
 
+    let savedFeature: any = null;
+
     function setControlDivs(mode: boolean = false,keepElement?: HTMLElement) {
         const controlDivs = document.querySelectorAll('.control') as NodeListOf<HTMLDivElement>;
         controlDivs.forEach((div) => {
@@ -38,8 +40,12 @@ document.addEventListener('DOMContentLoaded', () => {
      */
     function editLineString(point: [], event: Event, features: any[]) {
         console.log(features);
-        if(features.length>0)
+        if(features.length>0) {
+            map.clearAllEvents();
+            savedFeature = features[0];
             map.LineDrawMode('data', true, {type: "FeatureCollection", features: [features[0]]});
+            map.deleteFeature('data', features[0].properties.id);
+        }
     }
 
     /**
@@ -73,12 +79,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Add event listeners to finish drawing button
     finishDrawButton.addEventListener('click', () => {
+        savedFeature = null;
         map.finaliseLineDraw('data',{colour: "green"});
         resetDrawButtons()
     });
 
     // Add event listeners to draw button
     drawButton.addEventListener('click', (e: MouseEvent) => {
+        savedFeature = null;
         map.LineDrawMode('data', true);
         setDrawButtons(e.target.parentElement as HTMLElement);
 
@@ -89,13 +97,15 @@ document.addEventListener('DOMContentLoaded', () => {
     })
 
     drawCancelButton.addEventListener('click', () => {
-        resetDrawButtons();
+        if(savedFeature!==null)
+            map.addGeojson({type: "FeatureCollection",features: [savedFeature]},'data', false, {merge:true});
         map.finaliseLineDraw('data',{},'delete');
+        resetDrawButtons();
     })
 
     drawEditButton.addEventListener('click', (e: MouseEvent) => {
+        savedFeature = null;
         setDrawButtons(e.target.parentElement as HTMLElement);
-
         map.addEvent({event_type: 'click', layer_filter:['data-strings'], hook:editLineString, clear:false});
     });
 
@@ -107,8 +117,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function dropMarker(point:[]) {
         map.addGeojson({type: "FeatureCollection",features: [{type: "Feature", properties:{icon:"Start"}, geometry: {type: "Point", coordinates: point}}]},'data', false, {merge:true})
-        //map.clearAllEvents();
-        //setControlDivs();
     }
 
     dropButton.addEventListener('click', (e: MouseEvent) => {

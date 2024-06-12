@@ -5,7 +5,8 @@ A client for the MapLibre API giving simple access to basic map functionality.
 ## Installation
 
 ```bash
-pip install maplibre-client
+npm install git://github.com/nautoguide/maplibre-client.git
+
 ```
 
 ## Usage
@@ -107,4 +108,52 @@ function editFeatures(point: [], event: Event, features: any[]) {
 }
 
 map.clickEvent({layer_filter:['data','data-strings'], hook:editFeatures, clear:true});
+```
+
+### Simple react component
+
+```typescript
+import React, {useEffect, useRef} from "react";
+import pkg from 'maplibre-client';
+const {MaplibreClient} = pkg;
+
+interface MapProps {
+    geojson: {
+        type?: string,
+        features?: []
+    };
+}
+
+const Map: React.FC<MapProps> = ({ geojson }) => {
+
+    const mapRef = useRef(null);
+    const map = useRef(null);
+
+    useEffect(() => {
+        if(!map.current) {
+            map.current = new MaplibreClient({
+                style: '/mapfile.json',
+                maxZoom: 25,
+                minZoom: 1,
+            });
+        }
+    },[]);
+
+    useEffect(() => {
+        if(map.current ) {
+            if ( geojson && geojson.features && geojson.features.length > 0) {
+                map.current.addGeojson(geojson, 'data', true);
+            }
+        }
+
+    },[geojson]);
+
+    return (
+        <main className="flex-grow relative">
+                <div id={"map"} ref={mapRef} className={"w-full bg-gray-300"} style={{ height: 'calc(100vh - 144px)' }}/>
+        </main>
+    );
+}
+
+export default Map;
 ```
