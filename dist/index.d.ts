@@ -1,5 +1,5 @@
 import { Map } from 'maplibre-gl';
-interface Feature {
+export interface Feature {
     type: string;
     geometry: {
         type: string;
@@ -7,20 +7,21 @@ interface Feature {
     };
     properties?: {
         [key: string]: any;
+        id?: any;
     };
 }
-type GeoJSON = {
+export type GeoJSON = {
     type: string;
     features: Feature[];
 };
 interface GeoJSONMap {
     [key: string]: GeoJSON;
 }
-interface Icon {
+export interface Icon {
     name: string;
     url: string;
 }
-interface QueueOperation {
+export interface QueueOperation {
     type: "add_layer" | "remove_layer" | "add_geojson" | "clear_layer" | "set_visibility" | "add_event" | "resize" | "line_draw" | "set_center" | "delete_feature" | "move_feature";
     event_type?: string;
     layer_name?: string;
@@ -31,7 +32,7 @@ interface QueueOperation {
     toggle?: boolean;
     layer_filter?: string[];
 }
-interface ClientOptions {
+export interface ClientOptions {
     minZoom?: number;
     maxZoom?: number;
     zoom?: number;
@@ -44,7 +45,7 @@ interface ClientOptions {
     json_url?: string;
     fit?: boolean;
 }
-interface eventOptions {
+export interface eventOptions {
     hook?: Function;
     event_type?: string;
     layer_name?: string;
@@ -53,18 +54,18 @@ interface eventOptions {
     hook_actual?: Function;
     layer_filter?: string[];
 }
-interface historyElement {
+export interface historyElement {
     type: "geojson_full" | "delete_feature" | "move_feature" | "add_feature";
     layer_name: string;
     data: GeoJSON;
 }
-export declare class MaplibreClient {
+export default class MaplibreClient {
     map: Map;
     queue: QueueOperation[];
     loaded: boolean;
     debug: boolean;
     canvas: HTMLElement | undefined;
-    options: ClientOptions | {};
+    options: ClientOptions;
     geojson: GeoJSONMap;
     events: eventOptions[];
     draw_point_mode: string;
@@ -134,7 +135,7 @@ export declare class MaplibreClient {
      * @return {GeoJSON}
      */
     getGeojsonLayer(layer_name: string): GeoJSON;
-    getFeature(layer_name: string, feature_id: string): Feature | null;
+    getFeature(layer_name: string, feature_id: string): Feature;
     /**
      * Merge two geojson objects
      * @param data1
@@ -172,7 +173,7 @@ export declare class MaplibreClient {
      * @param eventOption
      */
     clickEvent(eventOption: eventOptions): void;
-    dragFeature(layer_name: string | undefined, feature_id: string): void;
+    dragFeature(layer_name: string, feature_id: string): void;
     /**
      * Add all other events to the map
      * @param eventOption

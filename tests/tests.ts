@@ -1,4 +1,4 @@
-import {MaplibreClient} from '../src/index';
+import {MaplibreClient} from '../dist/tests/tests';
 
 document.addEventListener('DOMContentLoaded', () => {
 
@@ -88,6 +88,7 @@ document.addEventListener('DOMContentLoaded', () => {
     drawButton.addEventListener('click', (e: MouseEvent) => {
         savedFeature = null;
         map.LineDrawMode('data', true);
+        //@ts-ignore
         setDrawButtons(e.target.parentElement as HTMLElement);
 
     });
@@ -105,6 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     drawEditButton.addEventListener('click', (e: MouseEvent) => {
         savedFeature = null;
+        //@ts-ignore
         setDrawButtons(e.target.parentElement as HTMLElement);
         map.addEvent({event_type: 'click', layer_filter:['data-strings'], hook:editLineString, clear:false});
     });
@@ -123,6 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
         editButton.disabled = true;
         cancelEditButton.disabled = false;
         map.clickEvent({ hook:dropMarker});
+        //@ts-ignore
         setControlDivs(true,e.target.parentElement as HTMLElement);
     });
 
@@ -146,6 +149,7 @@ document.addEventListener('DOMContentLoaded', () => {
         cancelEditButton.disabled = false;
         map.clearAllEvents();
         map.addEvent({event_type: 'mousedown', hook:editPoint, clear:true, layer_name: 'data', layer_filter:['data']});
+        //@ts-ignore
         setControlDivs(true,e.target.parentElement as HTMLElement);
         cancelEditButton.disabled = false;
     });

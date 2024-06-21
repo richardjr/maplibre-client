@@ -8,7 +8,7 @@ import * as turf from '@turf/turf';
 // Define the structure of your JSON objects as GeoJSON
 
 // Feature
-interface Feature {
+export interface Feature {
     type: string;
     geometry: {
         type: string;
@@ -16,12 +16,13 @@ interface Feature {
     };
     properties?: {
         [key: string]: any;
+        id?: any;
     };
 }
 
 // GeoJSON
 
-type GeoJSON = {
+export type GeoJSON = {
     type: string;
     features: Feature[];
 };
@@ -32,13 +33,13 @@ interface GeoJSONMap {
 }
 
 // Icons
-interface Icon {
+export interface Icon {
     name: string;
     url: string;
 }
 
 // Queue Operation
-interface QueueOperation {
+export interface QueueOperation {
     type: "add_layer" | "remove_layer" | "add_geojson" | "clear_layer" | "set_visibility" | "add_event" | "resize" | "line_draw" | "set_center" | "delete_feature" | "move_feature";
     event_type?: string;
     layer_name?: string; // This makes layer_name optional
@@ -51,7 +52,7 @@ interface QueueOperation {
 }
 
 // Client Options used to initialize the map
-interface ClientOptions {
+export interface ClientOptions {
     minZoom?: number;
     maxZoom?: number;
     zoom?: number;
@@ -66,7 +67,7 @@ interface ClientOptions {
 }
 
 // Event Options used to add events to the map
-interface eventOptions {
+export interface eventOptions {
     hook?: Function;
     event_type?: string;
     layer_name?: string;
@@ -76,7 +77,7 @@ interface eventOptions {
     layer_filter?: string[];
 }
 
-interface historyElement {
+export interface historyElement {
     type: "geojson_full" | "delete_feature" | "move_feature" | "add_feature";
     layer_name: string;
     data: GeoJSON;
@@ -85,14 +86,14 @@ interface historyElement {
 const defaultLayers = ["data"];
 
 // Maplibre Client
-export class MaplibreClient {
+export default class MaplibreClient {
     map: Map;
     queue: QueueOperation[] = [];
     loaded: boolean = false;
     debug: boolean = false;
     canvas: HTMLElement | undefined;
 
-    options: ClientOptions | {};
+    options: ClientOptions;
 
     geojson: GeoJSONMap = {};
     events: eventOptions[] = [];
@@ -109,13 +110,20 @@ export class MaplibreClient {
 
     constructor(options: ClientOptions) {
         this.options = options;
+        // Default any client options
+        this.options.style = this.options.style || '/mapfiles/?file=cartodb-xyz.json';
+        this.options.center = this.options.center || [-0.9307443, 50.7980974];
+        this.options.zoom = this.options.zoom || 10;
+        this.options.minZoom = this.options.minZoom || 15;
+        this.options.maxZoom = this.options.maxZoom || 1;
+
         this.map = new Map({
             container: 'map',
-            style: this.options.style || '/mapfiles/?file=cartodb-xyz.json',
-            center: this.options.center || [-0.9307443, 50.7980974],
-            zoom: this.options.zoom || 10,
-            minZoom: this.options.minZoom || 15,
-            maxZoom: this.options.maxZoom || 1
+            style: this.options.style,
+            center: this.options.center,
+            zoom: this.options.zoom,
+            minZoom: this.options.minZoom,
+            maxZoom: this.options.maxZoom
         });
 
         // Setup default layers geojson
@@ -145,7 +153,7 @@ export class MaplibreClient {
 
         this.map.on('load', function () {
             self.loaded = true;
-            self.loadIcons(self.options.icons);
+            self.loadIcons(self.options.icons||[]);
             self.enableLocation();
             self.processQueue();
             self.reload_data();
@@ -282,6 +290,7 @@ export class MaplibreClient {
                     if (this.geojson[operation.layer_name].features.length > 0) {
                         if(operation.toggle === true) {
                             const bbox = turf.bbox(this.geojson[operation.layer_name]);
+                            // @ts-ignore
                             this.map.fitBounds(bbox, {padding: this.options.padding, maxZoom: this.options.maxZoom});
                         }
                     }
@@ -319,6 +328,7 @@ export class MaplibreClient {
                     let event: eventOptions = {hook: operation.hook, layer_name: operation.layer_name, clear: operation.toggle, event_type: operation.event_type, layer_filter: operation.layer_filter};
                     event.hook_actual = callback;
                     if(event.layer_name) {
+                        // @ts-ignore
                         this.map.on(event.event_type, event.layer_name, callback);
                     } else {
                         this.map.on(event.event_type, callback);
@@ -409,7 +419,8 @@ export class MaplibreClient {
         let self = this;
         this.moving_point=null;
         this.drawProperties={};
-        let source = this.map.getSource("draw-end-points").setData({"type":"FeatureCollection","features":[]});
+        // @ts-ignore
+        this.map.getSource("draw-end-points").setData({"type":"FeatureCollection","features":[]});
         this.geojson["draw-end-points"] = {"type":"FeatureCollection","features":[]};
         this.draw_history=[];
 
@@ -481,6 +492,7 @@ export class MaplibreClient {
                 }
             };
             // Draw the line on the map
+            //@ts-ignore
             self.map.getSource("draw-vertex").setData(line);
             self._drawLine();
             this.drawProperties= operation.data.features[0].properties;
@@ -488,6 +500,7 @@ export class MaplibreClient {
 
 
         function addPoint(point: any[],e: Event) {
+            //@ts-ignore
             const features = self.map.queryRenderedFeatures(e.point, {layers: ['draw-end-points']});
 
             if(self.draw_point_mode==="add") {
@@ -505,9 +518,9 @@ export class MaplibreClient {
                 if (features.length > 0) {
                     // Delete the point
                     // find the point in draw_actual_points using the coordinates
-                    for(let i in self.draw_actual_points) {
+                    for (let i: number = 0; i < self.draw_actual_points.length; i++) {
                         // fuzzy match of coordinates by 0.0001
-
+                        //@ts-ignore
                         if(self._fuzzyMatch(self.draw_actual_points[i][0],features[0].geometry.coordinates[0])&&self._fuzzyMatch(self.draw_actual_points[i][1],features[0].geometry.coordinates[1])) {
                             self.draw_history.push(JSON.parse(JSON.stringify(self.draw_actual_points)));
                             self.draw_actual_points.splice(i,1);
@@ -529,6 +542,7 @@ export class MaplibreClient {
             let operation = this.history.pop();
             if(operation.type==="geojson_full") {
                 let source=this.map.getSource(operation.layer_name);
+                //@ts-ignore
                 source.setData(operation.data);
                 this.geojson[operation.layer_name] = operation.data;
             }
@@ -656,6 +670,7 @@ export class MaplibreClient {
     finaliseLineDraw(layer: string = 'data', properties: {} = {},mode: string = 'save'): void {
         this.clearAllEvents();
         // merge the saved properties with properties sent
+        //@ts-ignore
         properties = Object.assign(this.drawProperties, properties);
         if(mode==="save") {
             let geojson: GeoJSON = this.getDrawnLineString();
@@ -668,8 +683,11 @@ export class MaplibreClient {
             this.addGeojson(geojson, layer, false, {merge: true});
         }
         this.draw_actual_points=[];
+        //@ts-ignore
         this.map.getSource("draw-vertex").setData({"type":"FeatureCollection","features":[]});
+        //@ts-ignore
         this.map.getSource("draw-mid-points").setData({"type":"FeatureCollection","features":[]});
+        //@ts-ignore
         this.map.getSource("draw-end-points").setData({"type":"FeatureCollection","features":[]});
         this.geojson["draw-end-points"] = {"type":"FeatureCollection","features":[]};
         this.geojson["draw-mid-points"] = {"type":"FeatureCollection","features":[]};
@@ -683,10 +701,13 @@ export class MaplibreClient {
     clearAllEvents(): void {
         for (let i in this.events) {
             // @ts-ignore IS this working???
-            if(this.events[i].layer_name)
+            if(this.events[i].layer_name) {
+                //@ts-ignore
                 this.map.off(this.events[i].event_type, this.events[i].layer_name, this.events[i].hook_actual);
-            else
+            } else {
+                //@ts-ignore
                 this.map.off(this.events[i].event_type, this.events[i].hook_actual);
+            }
         }
         this.events = [];
     }
@@ -699,10 +720,13 @@ export class MaplibreClient {
 
         for (let i in this.events) {
             if (this.events[i].event_type === eventType) {
-                if(this.events[i].layer_name)
+                if(this.events[i].layer_name) {
+                    //@ts-ignore
                     this.map.off(eventType, this.events[i].layer_name, this.events[i].hook_actual);
-                else
+                } else {
+                    //@ts-ignore
                     this.map.off(eventType, this.events[i].hook_actual);
+                }
                 this.events.splice(Number(i), 1);
             }
         }
