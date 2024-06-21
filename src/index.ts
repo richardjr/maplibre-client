@@ -86,13 +86,13 @@ const defaultLayers = ["data"];
 
 // Maplibre Client
 export class MaplibreClient {
-    map: Map | undefined;
+    map: Map;
     queue: QueueOperation[] = [];
     loaded: boolean = false;
     debug: boolean = false;
     canvas: HTMLElement | undefined;
 
-    options: ClientOptions | undefined;
+    options: ClientOptions | {};
 
     geojson: GeoJSONMap = {};
     events: eventOptions[] = [];
@@ -409,7 +409,7 @@ export class MaplibreClient {
         let self = this;
         this.moving_point=null;
         this.drawProperties={};
-        this.map.getSource("draw-end-points").setData({"type":"FeatureCollection","features":[]});
+        let source = this.map.getSource("draw-end-points").setData({"type":"FeatureCollection","features":[]});
         this.geojson["draw-end-points"] = {"type":"FeatureCollection","features":[]};
         this.draw_history=[];
 
